@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+
+# Caches de modelos (no versionar, se bajan al usar)
+~/.cache/huggingface/
+~/.cache/spandrel/
+
+# Outputs de prueba
+*_sin_fondo.png
+*_mejorada.png
