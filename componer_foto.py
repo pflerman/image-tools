@@ -17,22 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 
-import numpy as np
 from PIL import Image, ImageFilter
-
-
-def premultiplied_resize(img: Image.Image, size: tuple[int, int]) -> Image.Image:
-    """Resize RGBA pre-multiplicando alpha para evitar halos en bordes semitransparentes."""
-    arr = np.array(img).astype(np.float32)
-    alpha = arr[..., 3:4] / 255.0
-    arr[..., :3] *= alpha
-    premul = Image.fromarray(arr.astype(np.uint8), "RGBA")
-    premul = premul.resize(size, Image.LANCZOS)
-    arr = np.array(premul).astype(np.float32)
-    alpha = arr[..., 3:4]
-    mask = alpha > 0
-    arr[..., :3] = np.where(mask, np.clip(arr[..., :3] / (alpha / 255.0 + 1e-6), 0, 255), 0)
-    return Image.fromarray(arr.astype(np.uint8), "RGBA")
 
 
 def cover_resize(img: Image.Image, target: tuple[int, int]) -> Image.Image:
@@ -74,7 +59,7 @@ def componer(
         scale = height / fh
         target_w = max(1, round(fw * scale))
         target_h = height
-    frente = premultiplied_resize(frente, (target_w, target_h))
+    frente = frente.resize((target_w, target_h), Image.LANCZOS)
 
     x = (width - target_w) // 2
     if position == "top":
