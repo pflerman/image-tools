@@ -2,6 +2,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# venv local (se recrea desde requirements.txt)
+.venv/
+
 # Caches de modelos (no versionar, se bajan al usar)
 ~/.cache/huggingface/
 ~/.cache/spandrel/

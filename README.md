@@ -2,47 +2,76 @@
 
 Scripts Python locales para procesar imágenes sin depender de APIs pagas ni servicios online. Todo corre offline, gratis, sin límites de uso.
 
+Corre en un **venv dedicado con Python 3.12** para aislarse de cambios del sistema y tener versiones pineadas.
+
+## Instalación
+
+```bash
+git clone https://github.com/pflerman/image-tools ~/Proyectos/image-tools
+cd ~/Proyectos/image-tools
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+### Wrappers en `~/bin/` (recomendado)
+
+Los scripts se invocan como comandos globales (`quitar_fondo foto.jpg`) gracias a los wrappers en `~/bin/` que activan automáticamente el venv:
+
+```bash
+mkdir -p ~/bin
+cat > ~/bin/quitar_fondo <<'EOF'
+#!/bin/bash
+exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/quitar_fondo.py "$@"
+EOF
+cat > ~/bin/mejorar_foto <<'EOF'
+#!/bin/bash
+exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/mejorar_foto.py "$@"
+EOF
+chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto
+
+# Agregar ~/bin al PATH si no está
+grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+```
+
 ## Scripts
 
-### `quitar_fondo.py` — Remover fondo con transparencia real
+### `quitar_fondo` — Remover fondo con transparencia real
 
 Usa **BRIA RMBG 1.4** (modelo de segmentación state-of-the-art) vía `transformers`. Devuelve PNG con canal alpha real. Mejor calidad que `rembg` (U2Net) especialmente en bordes finos, pelo, objetos translúcidos.
 
 **Uso:**
 ```bash
-python3 quitar_fondo.py foto.jpg                 # → foto_sin_fondo.png
-python3 quitar_fondo.py foto.jpg salida.png      # path de salida custom
+quitar_fondo foto.jpg                 # → foto_sin_fondo.png (misma carpeta)
+quitar_fondo foto.jpg salida.png      # path de salida custom
 ```
 
-**Dependencias:** `transformers<4.50`, `torch`, `torchvision`, `pillow`, `numpy`.
 **Modelo:** ~180MB, cacheado en `~/.cache/huggingface/` la primera vez.
 **Performance CPU:** ~5-10s por foto.
 
 ---
 
-### `mejorar_foto.py` — Upscale x4 con Real-ESRGAN
+### `mejorar_foto` — Upscale x4 con Real-ESRGAN
 
-Mejora resolución y calidad de fotos de baja calidad usando **Real-ESRGAN x4plus** vía `spandrel` (el reemplazo moderno de `basicsr`, compatible con Python 3.14).
+Mejora resolución y calidad de fotos de baja calidad usando **Real-ESRGAN x4plus** vía `spandrel` (el reemplazo moderno de `basicsr`, sin los problemas de compat).
 
 **Uso:**
 ```bash
-python3 mejorar_foto.py foto.jpg                 # 1024x1024 → 4096x4096 _mejorada.png
-python3 mejorar_foto.py foto.jpg salida.png      # path de salida custom
+mejorar_foto foto.jpg                 # 1024x1024 → 4096x4096 → foto_mejorada.png
+mejorar_foto foto.jpg salida.png      # path de salida custom
 ```
 
-**Dependencias:** `spandrel`, `torch`, `pillow`, `numpy`.
 **Modelo:** `RealESRGAN_x4plus.pth` (~65MB), cacheado en `~/.cache/spandrel/` la primera vez.
 **Performance CPU:** ~30-60s para 1024×1024. Procesa en tiles de 256px para no agotar RAM.
 
 ---
 
-## Instalación
+## Ejemplo de flujo combinado
 
+Recortar fondo y luego mejorar resolución:
 ```bash
-pip install --user "transformers<4.50" torch torchvision pillow numpy spandrel
+quitar_fondo producto.jpg
+mejorar_foto producto_sin_fondo.png
 ```
-
-En Python 3.14 hay que pinear `transformers<4.50` porque versiones nuevas rompen el `trust_remote_code` de BRIA.
 
 ## Por qué estos modelos
 
@@ -50,12 +79,18 @@ En Python 3.14 hay que pinear `transformers<4.50` porque versiones nuevas rompen
 |---|---|---|---|
 | Quitar fondo | BRIA RMBG 1.4 | rembg (U2Net) | BRIA más nítido en bordes |
 | Quitar fondo | BRIA RMBG 1.4 | Gemini edit_image | Gemini no genera alpha real, hornea el patrón ajedrezado |
-| Upscale | Real-ESRGAN via spandrel | realesrgan+basicsr | basicsr rota en Python 3.14 (APIs de torchvision removidas) |
+| Upscale | Real-ESRGAN via spandrel | realesrgan+basicsr | basicsr rota en Python 3.14+ (APIs de torchvision removidas) |
 
-## Ejemplos de flujo combinado
+## Por qué venv con Python 3.12
 
-Recortar y luego mejorar resolución:
+- **Aislado del sistema**: `dnf update` no puede romper las deps.
+- **Python 3.12** tiene soporte estable de torch/torchvision. 3.14 tiene wheels pero sigue siendo terreno reciente.
+- **requirements.txt pineado**: cualquier breaking de transformers/torch/spandrel no te afecta hasta que decidas actualizar.
+
+Para actualizar versiones a propósito:
 ```bash
-python3 quitar_fondo.py producto.jpg
-python3 mejorar_foto.py producto_sin_fondo.png
+cd ~/Proyectos/image-tools
+.venv/bin/pip install -U transformers torch torchvision spandrel pillow numpy
+.venv/bin/pip freeze > requirements.txt
+# probar que ande, commitear
 ```
