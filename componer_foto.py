@@ -51,14 +51,11 @@ def componer(
 
     frente = Image.open(frente_path).convert("RGBA")
     fw, fh = frente.size
-    target_w = int(width * size_pct / 100)
-    scale = target_w / fw
+    max_w = width * size_pct / 100
+    max_h = height * size_pct / 100
+    scale = min(max_w / fw, max_h / fh)
+    target_w = max(1, round(fw * scale))
     target_h = max(1, round(fh * scale))
-    if target_h > height:
-        # clampear si el sujeto queda más alto que el canvas
-        scale = height / fh
-        target_w = max(1, round(fw * scale))
-        target_h = height
     frente = frente.resize((target_w, target_h), Image.LANCZOS)
 
     x = (width - target_w) // 2
