@@ -35,7 +35,11 @@ cat > ~/bin/cropear <<'EOF'
 #!/bin/bash
 exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/cropear.py "$@"
 EOF
-chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma ~/bin/cropear
+cat > ~/bin/agregar_texto <<'EOF'
+#!/bin/bash
+exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/agregar_texto.py "$@"
+EOF
+chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma ~/bin/cropear ~/bin/agregar_texto
 
 # Agregar ~/bin al PATH si no está
 grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
@@ -102,6 +106,24 @@ cropear foto.png                  # → foto_cropeada.png, sin padding
 cropear foto.png 20               # con 20px de padding
 cropear foto.png 20 salida.png    # con padding + salida custom
 ```
+
+### `agregar_texto` — Overlay de texto con contraste y posición automática
+
+Agrega texto a una imagen eligiendo color de texto (blanco o negro + contorno opuesto) según la luminancia del área donde cae, y ubicándolo en la banda (top/bottom) con menos "busyness" para no pisar al sujeto. Wrap automático si el texto es largo.
+
+**Uso:**
+```bash
+agregar_texto foto.png 'Mi título'
+agregar_texto foto.png 'Oferta' --position top --size 80
+agregar_texto foto.png 'Texto largo que wrappea' --output out.png
+```
+
+**Opciones:**
+- `--position {top,bottom,auto}` — default `auto` (elige la banda con menor varianza/más alpha)
+- `--size N` — tamaño de fuente en px (default `ancho/18`)
+- `--output PATH` — default `<entrada>_con_texto.png`
+
+Usa DejaVu Sans Bold (fallback a Liberation/Noto/default). Imprime el color dominante y la decisión de posición.
 
 ---
 
