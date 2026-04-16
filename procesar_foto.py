@@ -83,7 +83,7 @@ def main():
     )
     p.add_argument("imagen", type=Path)
     p.add_argument("texto", nargs="?", default=None, help="Texto opcional para overlay")
-    p.add_argument("--padding", type=int, default=20, help="Padding del crop en px (default 20)")
+    p.add_argument("--padding", type=int, default=0, help="Padding del crop en px (default 0)")
     p.add_argument("--position", choices=["top", "bottom", "auto"], default="auto")
     p.add_argument("--size", type=int, default=None, help="Tamaño de fuente en px")
     p.add_argument("--output", type=Path, default=None)

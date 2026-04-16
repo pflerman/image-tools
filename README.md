@@ -155,7 +155,7 @@ procesar_foto foto.jpg --output /tmp/out.png
 ```
 
 **Opciones:**
-- `--padding N` — padding del crop en px (default `20`)
+- `--padding N` — padding del crop en px (default `0`)
 - `--position {top,bottom,auto}` — default `auto`
 - `--size N` — tamaño de fuente en px
 - `--width N` / `--height N` — pasan directo a `mejorar_foto` (ver reglas ahí). Sin flags: max 1200px.
