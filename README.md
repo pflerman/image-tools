@@ -157,7 +157,15 @@ procesar_foto foto.jpg --output /tmp/out.png
 - `--padding N` — padding del crop en px (default `20`)
 - `--position {top,bottom,auto}` — default `auto`
 - `--size N` — tamaño de fuente en px
+- `--width N` / `--height N` — pasan directo a `mejorar_foto` (ver reglas ahí). Sin flags: max 1200px.
 - `--output PATH` — default `<entrada>_procesada.png`
+
+```bash
+procesar_foto foto.jpg 'Oferta'                            # → max 1200px (default)
+procesar_foto foto.jpg 'Oferta' --width 800                # → 800px ancho, alto proporcional
+procesar_foto foto.jpg 'Oferta' --height 600               # → 600px alto, ancho proporcional
+procesar_foto foto.jpg 'Oferta' --width 800 --height 600   # → exacto, sin proporción
+```
 
 Imprime el progreso de cada paso y el tiempo total.
 
