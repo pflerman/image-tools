@@ -43,7 +43,11 @@ cat > ~/bin/procesar_foto <<'EOF'
 #!/bin/bash
 exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/procesar_foto.py "$@"
 EOF
-chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma ~/bin/cropear ~/bin/agregar_texto ~/bin/procesar_foto
+cat > ~/bin/componer_foto <<'EOF'
+#!/bin/bash
+exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/componer_foto.py "$@"
+EOF
+chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma ~/bin/cropear ~/bin/agregar_texto ~/bin/procesar_foto ~/bin/componer_foto
 
 # Agregar ~/bin al PATH si no está
 grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
@@ -165,6 +169,29 @@ procesar_foto foto.jpg 'Oferta' --width 800 --height 600   # → exacto, sin pro
 ```
 
 Imprime el progreso de cada paso y el tiempo total.
+
+---
+
+### `componer_foto` — Sujeto recortado sobre fondo difuminado
+
+Combina un PNG con alpha (sujeto) y una imagen de fondo (cualquier formato). El fondo se escala en modo **cover** al tamaño del canvas y se le aplica un blur gaussiano. El sujeto se pega centrado horizontalmente, escalado a un % del ancho del canvas.
+
+**Uso:**
+```bash
+componer_foto producto_sin_fondo.png paisaje.jpg                  # defaults: 1200×1200, sujeto 70%, centro, blur 15
+componer_foto frente.png fondo.jpg --size 60 --position bottom --blur 25
+componer_foto frente.png fondo.jpg --width 1080 --height 1920     # formato vertical
+componer_foto frente.png fondo.jpg --output /tmp/out.png
+```
+
+**Opciones:**
+- `--size N` — tamaño del sujeto como % del ancho de salida (default `70`)
+- `--position {top,center,bottom}` — posición vertical del sujeto (default `center`)
+- `--blur N` — radio de blur gaussiano al fondo (default `15`, `0` = sin blur)
+- `--width N` / `--height N` — tamaño del canvas (default `1200×1200`)
+- `--output PATH` — default `<frente>_compuesta.png` en la carpeta del frente
+
+Si el sujeto queda más alto que el canvas se clampea por altura preservando aspect ratio.
 
 ---
 
