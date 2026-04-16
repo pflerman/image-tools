@@ -27,7 +27,11 @@ cat > ~/bin/mejorar_foto <<'EOF'
 #!/bin/bash
 exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/mejorar_foto.py "$@"
 EOF
-chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto
+cat > ~/bin/limpiar_fantasma <<'EOF'
+#!/bin/bash
+exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/limpiar_fantasma.py "$@"
+EOF
+chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma
 
 # Agregar ~/bin al PATH si no está
 grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
@@ -65,12 +69,32 @@ mejorar_foto foto.jpg salida.png      # path de salida custom
 
 ---
 
+### `limpiar_fantasma` — Eliminar residuos de un recorte con alpha
+
+Limpia regiones "fantasma" de un PNG con canal alpha: píxeles semitransparentes sueltos, islas pequeñas desconectadas del sujeto, y neblina gris de baja saturación que dejó el modelo de segmentación. Preserva los bordes suaves legítimos (pelo, cristal) adyacentes a zonas sólidas.
+
+**Uso:**
+```bash
+limpiar_fantasma foto_sin_fondo.png                    # → foto_sin_fondo_limpia.png
+limpiar_fantasma foto_sin_fondo.png salida.png         # path de salida custom
+```
+
+**Heurísticas** (tuneables en el script):
+- `alpha < 30` → ruido, eliminado
+- Islas conectadas < 500 píxeles → fragmentos, eliminados
+- Semitransparente + saturación < 25 + lejos del núcleo sólido → neblina gris, eliminada
+
+Imprime un reporte de cuántos píxeles limpió por categoría.
+
+---
+
 ## Ejemplo de flujo combinado
 
-Recortar fondo y luego mejorar resolución:
+Recortar fondo, limpiar residuos y mejorar resolución:
 ```bash
 quitar_fondo producto.jpg
-mejorar_foto producto_sin_fondo.png
+limpiar_fantasma producto_sin_fondo.png
+mejorar_foto producto_sin_fondo_limpia.png
 ```
 
 ## Por qué estos modelos
