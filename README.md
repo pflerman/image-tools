@@ -66,13 +66,13 @@ quitar_fondo foto.jpg salida.png      # path de salida custom
 
 ---
 
-### `mejorar_foto` — Upscale x4 con Real-ESRGAN
+### `mejorar_foto` — Redimensionar con PIL LANCZOS
 
-Mejora resolución y calidad de fotos de baja calidad usando **Real-ESRGAN x4plus** vía `spandrel` (el reemplazo moderno de `basicsr`, sin los problemas de compat).
+Redimensiona una foto con **PIL.Image.resize()** usando filtro LANCZOS. Instantáneo, sin modelos ni dependencias pesadas (solo Pillow).
 
 **Uso:**
 ```bash
-mejorar_foto foto.jpg                         # upscale x4, clampado a 1200px max
+mejorar_foto foto.jpg                         # clampado a 1200px max (aspect ratio)
 mejorar_foto foto.jpg salida.png              # path de salida custom
 mejorar_foto foto.jpg --width 800             # 800px de ancho, alto proporcional
 mejorar_foto foto.jpg --height 600            # 600px de alto, ancho proporcional
@@ -85,9 +85,6 @@ mejorar_foto foto.jpg --width 1024 --height 1024  # tamaño exacto (no mantiene 
 - Sin flags: clampa a `MAX_OUTPUT_SIZE` (1200px lado mayor) manteniendo aspect ratio
 - Solo uno: calcula el otro manteniendo aspect ratio
 - Ambos: tamaño exacto sin mantener proporción
-
-**Modelo:** `RealESRGAN_x4plus.pth` (~65MB), cacheado en `~/.cache/spandrel/` la primera vez.
-**Performance CPU:** ~30-60s para 1024×1024. Procesa en tiles de 256px para no agotar RAM.
 
 ---
 
@@ -188,7 +185,6 @@ mejorar_foto producto_sin_fondo_limpia_cropeada_con_texto.png
 |---|---|---|---|
 | Quitar fondo | BRIA RMBG 1.4 | rembg (U2Net) | BRIA más nítido en bordes |
 | Quitar fondo | BRIA RMBG 1.4 | Gemini edit_image | Gemini no genera alpha real, hornea el patrón ajedrezado |
-| Upscale | Real-ESRGAN via spandrel | realesrgan+basicsr | basicsr rota en Python 3.14+ (APIs de torchvision removidas) |
 
 ## Por qué venv con Python 3.12
 
