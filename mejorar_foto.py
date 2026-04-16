@@ -20,6 +20,7 @@ MODEL_URL = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/Rea
 MODEL_PATH = Path.home() / ".cache" / "spandrel" / "RealESRGAN_x4plus.pth"
 TILE_SIZE = 256  # procesar en tiles para no agotar RAM
 TILE_PAD = 16
+MAX_OUTPUT_SIZE = 1200
 
 
 def download_model():
@@ -65,8 +66,12 @@ def mejorar(entrada: Path, salida: Path):
     t = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0).to(device)
     up = upscale_tiled(model.model, t, scale, device)
     up = up.clamp(0, 1).squeeze(0).permute(1, 2, 0).cpu().numpy()
-    Image.fromarray((up * 255).astype(np.uint8)).save(salida)
-    print(f"✓ {salida}")
+    out_img = Image.fromarray((up * 255).astype(np.uint8))
+    if max(out_img.size) > MAX_OUTPUT_SIZE:
+        print(f"Redimensionando {out_img.size} → max {MAX_OUTPUT_SIZE}px (aspect ratio preservado)")
+        out_img.thumbnail((MAX_OUTPUT_SIZE, MAX_OUTPUT_SIZE), Image.LANCZOS)
+    out_img.save(salida)
+    print(f"✓ {salida} ({out_img.size})")
 
 
 def main():
