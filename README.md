@@ -31,7 +31,11 @@ cat > ~/bin/limpiar_fantasma <<'EOF'
 #!/bin/bash
 exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/limpiar_fantasma.py "$@"
 EOF
-chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma
+cat > ~/bin/cropear <<'EOF'
+#!/bin/bash
+exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/cropear.py "$@"
+EOF
+chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma ~/bin/cropear
 
 # Agregar ~/bin al PATH si no está
 grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
@@ -88,13 +92,27 @@ Imprime un reporte de cuántos píxeles limpió por categoría.
 
 ---
 
+### `cropear` — Recortar el espacio transparente sobrante
+
+Detecta el bounding box de los píxeles opacos y cropea la imagen a ese rectángulo, con padding opcional en píxeles.
+
+**Uso:**
+```bash
+cropear foto.png                  # → foto_cropeada.png, sin padding
+cropear foto.png 20               # con 20px de padding
+cropear foto.png 20 salida.png    # con padding + salida custom
+```
+
+---
+
 ## Ejemplo de flujo combinado
 
-Recortar fondo, limpiar residuos y mejorar resolución:
+Recortar fondo, limpiar residuos, cropear y mejorar resolución:
 ```bash
 quitar_fondo producto.jpg
 limpiar_fantasma producto_sin_fondo.png
-mejorar_foto producto_sin_fondo_limpia.png
+cropear producto_sin_fondo_limpia.png 20
+mejorar_foto producto_sin_fondo_limpia_cropeada.png
 ```
 
 ## Por qué estos modelos
