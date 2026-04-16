@@ -191,7 +191,7 @@ componer_foto frente.png fondo.jpg --output /tmp/out.png
 - `--width N` / `--height N` — tamaño del canvas (default `1200×1200`)
 - `--output PATH` — default `<frente>_compuesta.png` en la carpeta del frente
 
-Si el sujeto queda más alto que el canvas se clampea por altura preservando aspect ratio.
+Si el sujeto excede el canvas, se cropea en los bordes (sin clamp — el `--size` se respeta tal cual).
 
 ---
 
