@@ -2,11 +2,17 @@
 """Mejorar resolución y calidad de una foto usando Real-ESRGAN x4 via spandrel.
 
 Uso:
-    python3 mejorar_foto.py <entrada> [salida]
+    python3 mejorar_foto.py <entrada> [salida] [--width N] [--height N]
 
 Si no se provee salida, usa <entrada>_mejorada.png en la misma carpeta.
 La primera ejecución descarga el modelo (~65MB) y queda cacheado.
+
+Tamaño:
+    - sin --width ni --height: clamp a MAX_OUTPUT_SIZE (1200px) manteniendo aspect ratio
+    - solo --width o solo --height: resize manteniendo aspect ratio
+    - ambos: resize al tamaño exacto (sin mantener proporción)
 """
+import argparse
 import sys
 import urllib.request
 from pathlib import Path
@@ -52,7 +58,24 @@ def upscale_tiled(model, img_tensor, scale, device):
     return out
 
 
-def mejorar(entrada: Path, salida: Path):
+def _target_size(current: tuple[int, int], width: int | None, height: int | None) -> tuple[int, int] | None:
+    """Calcula el tamaño de salida deseado según --width/--height.
+
+    - ambos: tamaño exacto (sin mantener proporción)
+    - uno solo: calcula el otro manteniendo aspect ratio
+    - ninguno: None (se aplica clamp por MAX_OUTPUT_SIZE)
+    """
+    cw, ch = current
+    if width and height:
+        return (width, height)
+    if width:
+        return (width, round(ch * width / cw))
+    if height:
+        return (round(cw * height / ch), height)
+    return None
+
+
+def mejorar(entrada: Path, salida: Path, width: int | None = None, height: int | None = None):
     download_model()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Cargando modelo en {device}...")
@@ -67,20 +90,32 @@ def mejorar(entrada: Path, salida: Path):
     up = upscale_tiled(model.model, t, scale, device)
     up = up.clamp(0, 1).squeeze(0).permute(1, 2, 0).cpu().numpy()
     out_img = Image.fromarray((up * 255).astype(np.uint8))
-    if max(out_img.size) > MAX_OUTPUT_SIZE:
+
+    target = _target_size(out_img.size, width, height)
+    if target:
+        print(f"Redimensionando {out_img.size} → {target}")
+        out_img = out_img.resize(target, Image.LANCZOS)
+    elif max(out_img.size) > MAX_OUTPUT_SIZE:
         print(f"Redimensionando {out_img.size} → max {MAX_OUTPUT_SIZE}px (aspect ratio preservado)")
         out_img.thumbnail((MAX_OUTPUT_SIZE, MAX_OUTPUT_SIZE), Image.LANCZOS)
+
     out_img.save(salida)
     print(f"✓ {salida} ({out_img.size})")
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(1)
-    entrada = Path(sys.argv[1]).resolve()
-    salida = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else entrada.with_name(f"{entrada.stem}_mejorada.png")
-    mejorar(entrada, salida)
+    p = argparse.ArgumentParser(
+        description="Upscale x4 con Real-ESRGAN. Output clampado a 1200px salvo que se pase --width/--height.",
+    )
+    p.add_argument("entrada", type=Path)
+    p.add_argument("salida", type=Path, nargs="?", default=None)
+    p.add_argument("--width", type=int, default=None, help="Ancho exacto de salida en px")
+    p.add_argument("--height", type=int, default=None, help="Alto exacto de salida en px")
+    args = p.parse_args()
+
+    entrada = args.entrada.resolve()
+    salida = args.salida.resolve() if args.salida else entrada.with_name(f"{entrada.stem}_mejorada.png")
+    mejorar(entrada, salida, args.width, args.height)
 
 
 if __name__ == "__main__":

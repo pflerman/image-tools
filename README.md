@@ -39,7 +39,11 @@ cat > ~/bin/agregar_texto <<'EOF'
 #!/bin/bash
 exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/agregar_texto.py "$@"
 EOF
-chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma ~/bin/cropear ~/bin/agregar_texto
+cat > ~/bin/procesar_foto <<'EOF'
+#!/bin/bash
+exec ~/Proyectos/image-tools/.venv/bin/python ~/Proyectos/image-tools/procesar_foto.py "$@"
+EOF
+chmod +x ~/bin/quitar_fondo ~/bin/mejorar_foto ~/bin/limpiar_fantasma ~/bin/cropear ~/bin/agregar_texto ~/bin/procesar_foto
 
 # Agregar ~/bin al PATH si no está
 grep -q 'HOME/bin' ~/.bashrc || echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
@@ -68,9 +72,19 @@ Mejora resolución y calidad de fotos de baja calidad usando **Real-ESRGAN x4plu
 
 **Uso:**
 ```bash
-mejorar_foto foto.jpg                 # 1024x1024 → 4096x4096 → foto_mejorada.png
-mejorar_foto foto.jpg salida.png      # path de salida custom
+mejorar_foto foto.jpg                         # upscale x4, clampado a 1200px max
+mejorar_foto foto.jpg salida.png              # path de salida custom
+mejorar_foto foto.jpg --width 800             # 800px de ancho, alto proporcional
+mejorar_foto foto.jpg --height 600            # 600px de alto, ancho proporcional
+mejorar_foto foto.jpg --width 1024 --height 1024  # tamaño exacto (no mantiene proporción)
 ```
+
+**Opciones:**
+- `--width N` — ancho de salida en px
+- `--height N` — alto de salida en px
+- Sin flags: clampa a `MAX_OUTPUT_SIZE` (1200px lado mayor) manteniendo aspect ratio
+- Solo uno: calcula el otro manteniendo aspect ratio
+- Ambos: tamaño exacto sin mantener proporción
 
 **Modelo:** `RealESRGAN_x4plus.pth` (~65MB), cacheado en `~/.cache/spandrel/` la primera vez.
 **Performance CPU:** ~30-60s para 1024×1024. Procesa en tiles de 256px para no agotar RAM.
@@ -127,14 +141,37 @@ Usa DejaVu Sans Bold (fallback a Liberation/Noto/default). Imprime el color domi
 
 ---
 
-## Ejemplo de flujo combinado
+### `procesar_foto` — Pipeline completo en un comando
 
-Recortar fondo, limpiar residuos, cropear y mejorar resolución:
+Ejecuta en orden: `quitar_fondo` → `limpiar_fantasma` → `cropear` → `agregar_texto` (opcional) → `mejorar_foto`. Usa archivos intermedios en un tempdir, así solo queda el resultado final.
+
+**Uso:**
+```bash
+procesar_foto foto.jpg                              # sin texto (4 pasos)
+procesar_foto foto.jpg 'Oferta especial'            # con texto (5 pasos)
+procesar_foto foto.jpg 'Oferta' --position top --size 80 --padding 30
+procesar_foto foto.jpg --output /tmp/out.png
+```
+
+**Opciones:**
+- `--padding N` — padding del crop en px (default `20`)
+- `--position {top,bottom,auto}` — default `auto`
+- `--size N` — tamaño de fuente en px
+- `--output PATH` — default `<entrada>_procesada.png`
+
+Imprime el progreso de cada paso y el tiempo total.
+
+---
+
+## Flujo manual paso a paso
+
+Si preferís controlar cada etapa (o inspeccionar intermediarios):
 ```bash
 quitar_fondo producto.jpg
 limpiar_fantasma producto_sin_fondo.png
 cropear producto_sin_fondo_limpia.png 20
-mejorar_foto producto_sin_fondo_limpia_cropeada.png
+agregar_texto producto_sin_fondo_limpia_cropeada.png 'Texto'
+mejorar_foto producto_sin_fondo_limpia_cropeada_con_texto.png
 ```
 
 ## Por qué estos modelos
