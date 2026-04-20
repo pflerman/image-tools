@@ -167,7 +167,7 @@ def draw_callout(img: Image.Image, px: int, py: int, text: str, font,
 
     draw = ImageDraw.Draw(img)
     draw.line([(px, py), (round(ex), round(ey))], fill=LINE_COLOR, width=line_w)
-    _arrow_angled(draw, px, py, -ux, -uy, arrow_s)
+    _arrow_angled(draw, px, py, ux, uy, arrow_s)
 
     _horizontal_label(img, ex, ey, text, font, escala)
 
