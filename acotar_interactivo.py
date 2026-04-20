@@ -2,8 +2,9 @@
 """Herramienta visual interactiva para agregar cotas de medidas a imágenes de producto.
 
 Se abre la imagen en una ventana Tkinter. Click izquierdo en punto A, click en
-punto B, se pide la medida y se dibuja la cota. Click derecho para callouts de
-texto libre con un solo click (ej: "Bisagras reforzadas"). Ambos conviven.
+punto B, se pide la medida y se dibuja la cota. Click derecho en punto A (objeto),
+click derecho en punto B (donde va el label), se pide texto y se dibuja la
+anotación con flecha hacia A y label horizontal en B.
 
 Uso:
     python3 acotar_interactivo.py <imagen> [--unidad cm] [--fondo blanco|transparente] [--margen N] [--escala F]
@@ -118,16 +119,26 @@ def draw_cota(img: Image.Image, ax: int, ay: int, bx: int, by: int,
     _rotated_label(img, mid_x, mid_y, label, font, angle_rad, escala)
 
 
-CALLOUT_LENGTH = 80
+def draw_annotation(img: Image.Image, ax: int, ay: int, bx: int, by: int,
+                    text: str, font, escala: float = 1.0):
+    """Anotación: línea de A a B, flecha apuntando hacia A, label horizontal en B."""
+    dx = bx - ax
+    dy = by - ay
+    length = math.hypot(dx, dy)
+    if length < 2:
+        return
+    ux, uy = dx / length, dy / length
 
+    line_w = max(1, round(LINE_WIDTH * escala))
+    arrow_s = ARROW_SIZE * escala
 
-def _horizontal_label(img: Image.Image, cx: float, cy: float, text: str,
-                      font, escala: float):
-    """Label horizontal con fondo, centrado en (cx, cy)."""
+    draw = ImageDraw.Draw(img)
+    draw.line([(ax, ay), (bx, by)], fill=LINE_COLOR, width=line_w)
+    _arrow_angled(draw, ax, ay, ux, uy, arrow_s)
+
     pad_x = round(LABEL_PAD_X * escala)
     pad_y = round(LABEL_PAD_Y * escala)
-    probe = ImageDraw.Draw(img)
-    bbox = probe.textbbox((0, 0), text, font=font)
+    bbox = draw.textbbox((0, 0), text, font=font)
     tw = bbox[2] - bbox[0]
     th = bbox[3] - bbox[1]
     lw = tw + pad_x * 2
@@ -140,36 +151,11 @@ def _horizontal_label(img: Image.Image, cx: float, cy: float, text: str,
     d.text((pad_x - bbox[0], pad_y - bbox[1]), text,
            fill=LINE_COLOR, font=font)
 
-    px = int(round(cx - lw / 2))
-    py = int(round(cy - lh / 2))
+    px = int(round(bx - lw / 2))
+    py = int(round(by - lh / 2))
     px = max(0, min(px, img.width - lw))
     py = max(0, min(py, img.height - lh))
     img.alpha_composite(tmp, (px, py))
-
-
-def draw_callout(img: Image.Image, px: int, py: int, text: str, font,
-                 img_w: int, img_h: int, escala: float = 1.0):
-    """Dibuja un callout: flecha en el punto, línea diagonal hacia afuera, label horizontal."""
-    cx, cy = img_w / 2, img_h / 2
-    dx = px - cx
-    dy = py - cy
-    dist = math.hypot(dx, dy)
-    if dist < 1:
-        dx, dy, dist = 1.0, -1.0, math.sqrt(2)
-    ux, uy = dx / dist, dy / dist
-
-    length = CALLOUT_LENGTH * escala
-    ex = px + ux * length
-    ey = py + uy * length
-
-    line_w = max(1, round(LINE_WIDTH * escala))
-    arrow_s = ARROW_SIZE * escala
-
-    draw = ImageDraw.Draw(img)
-    draw.line([(px, py), (round(ex), round(ey))], fill=LINE_COLOR, width=line_w)
-    _arrow_angled(draw, px, py, ux, uy, arrow_s)
-
-    _horizontal_label(img, ex, ey, text, font, escala)
 
 
 class AcotarApp:
@@ -198,6 +184,7 @@ class AcotarApp:
 
         self.items: list[tuple] = []
         self.point_a: tuple[int, int] | None = None
+        self.active_mode: str | None = None
         self.preview_ids: list[int] = []
 
         font_size = max(14, round(min(self.orig_w, self.orig_h) / 22 * escala))
@@ -228,8 +215,8 @@ class AcotarApp:
         self.status = tk.Label(root, text="", anchor=tk.W, padx=8)
         self.status.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.canvas.bind("<Button-1>", self._on_click_left)
-        self.canvas.bind("<Button-3>", self._on_click_right)
+        self.canvas.bind("<Button-1>", lambda e: self._on_click(e, "cota"))
+        self.canvas.bind("<Button-3>", lambda e: self._on_click(e, "nota"))
         self.canvas.bind("<Motion>", self.on_motion)
         self.root.bind("<Escape>", self.on_escape)
 
@@ -254,42 +241,43 @@ class AcotarApp:
             self.canvas.delete(item_id)
         self.preview_ids.clear()
 
-    def _on_click_left(self, event):
+    def _on_click(self, event, mode: str):
+        if self.point_a is not None and mode != self.active_mode:
+            return
         ox, oy = self._to_orig(event.x, event.y)
         ox = max(0, min(ox, self.orig_w - 1))
         oy = max(0, min(oy, self.orig_h - 1))
 
         if self.point_a is None:
             self.point_a = (ox, oy)
+            self.active_mode = mode
             r = 5
             item = self.canvas.create_oval(
                 event.x - r, event.y - r, event.x + r, event.y + r,
                 fill=LINE_COLOR_HEX, outline="white", width=2,
             )
             self.preview_ids.append(item)
-            self.status.config(text="Click izq en el punto B de la cota  (Esc para cancelar)")
+            if mode == "cota":
+                self.status.config(text="Click izq en el punto B de la cota  (Esc para cancelar)")
+            else:
+                self.status.config(text="Click der en el punto B (donde va el texto)  (Esc para cancelar)")
         else:
             bx, by = ox, oy
             ax, ay = self.point_a
             self._clear_preview()
             self.point_a = None
-            measure = self._ask_measure()
-            if measure is not None:
-                label = f"{format_measure(measure)} {self.unidad}"
-                self.items.append(("cota", ax, ay, bx, by, label))
-                self.redraw()
-            self._update_status_idle()
-
-    def _on_click_right(self, event):
-        if self.point_a is not None:
-            return
-        ox, oy = self._to_orig(event.x, event.y)
-        ox = max(0, min(ox, self.orig_w - 1))
-        oy = max(0, min(oy, self.orig_h - 1))
-        text = self._ask_text()
-        if text:
-            self.items.append(("callout", ox, oy, text))
-            self.redraw()
+            self.active_mode = None
+            if mode == "cota":
+                measure = self._ask_measure()
+                if measure is not None:
+                    label = f"{format_measure(measure)} {self.unidad}"
+                    self.items.append(("cota", ax, ay, bx, by, label))
+                    self.redraw()
+            else:
+                text = self._ask_text()
+                if text:
+                    self.items.append(("nota", ax, ay, bx, by, text))
+                    self.redraw()
             self._update_status_idle()
 
     def on_motion(self, event):
@@ -307,6 +295,7 @@ class AcotarApp:
     def on_escape(self, event=None):
         if self.point_a is not None:
             self.point_a = None
+            self.active_mode = None
             self._clear_preview()
             self._update_status_idle()
 
@@ -404,9 +393,8 @@ class AcotarApp:
                 _, ax, ay, bx, by, label = item
                 draw_cota(img, ax, ay, bx, by, label, self.font, self.escala)
             else:
-                _, px, py, text = item
-                draw_callout(img, px, py, text, self.font,
-                             self.orig_w, self.orig_h, self.escala)
+                _, ax, ay, bx, by, text = item
+                draw_annotation(img, ax, ay, bx, by, text, self.font, self.escala)
 
     def redraw(self):
         composed = self.original.copy()
